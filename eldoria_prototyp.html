@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#101b2d">
+<title>Eldoria: Probuzení draka — prototyp</title>
+<style>
+:root{--gold:#ffd36b;--panel:rgba(10,18,32,.84);--line:rgba(255,255,255,.18)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101b2d;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(8px);box-shadow:0 8px 28px #0003}
+#top{position:absolute;left:12px;right:12px;top:12px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+#brand{padding:10px 12px;max-width:58%}
+#brand strong{display:block;color:var(--gold);font-size:15px;letter-spacing:.3px}
+#brand small{opacity:.8;font-size:11px}
+#stats{padding:9px 11px;min-width:130px;font-size:12px}
+.statline{display:flex;justify-content:space-between;gap:10px;margin-bottom:4px}
+.bar{height:7px;background:#ffffff20;border-radius:10px;overflow:hidden;margin:3px 0 6px}
+.fill{height:100%;width:100%;border-radius:10px;transition:width .2s}
+#hpFill{background:linear-gradient(90deg,#ff5264,#ff9a70)}
+#xpFill{background:linear-gradient(90deg,#7a6cff,#48d8ff)}
+#quest{position:absolute;top:115px;left:12px;padding:9px 12px;max-width:72%;font-size:12px}
+#quest b{color:var(--gold)}
+#hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:8px 12px;text-align:center;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .2s}
+#hint.show{opacity:1}
+#bottom{position:absolute;left:0;right:0;bottom:0;height:205px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px 18px}
+#joystick{width:116px;height:116px;border-radius:50%;background:#0b172b99;border:2px solid #ffffff35;position:relative;pointer-events:auto;touch-action:none}
+#stick{width:48px;height:48px;border-radius:50%;position:absolute;left:32px;top:32px;background:#dce9ffbb;border:2px solid #fff9;box-shadow:0 3px 12px #0005}
+#actions{display:flex;align-items:flex-end;gap:10px;pointer-events:auto}
+.action{border:1px solid #ffffff55;color:#fff;background:linear-gradient(145deg,#263d5c,#101c30);border-radius:50%;width:66px;height:66px;font-weight:800;font-size:12px;box-shadow:0 5px 14px #0005;touch-action:manipulation}
+.action span{display:block;font-size:21px;margin-bottom:1px}
+#attack{width:82px;height:82px;background:linear-gradient(145deg,#b64c54,#60202e);border-color:#ffb0a7}
+#interact{width:64px;height:64px;background:linear-gradient(145deg,#7c6a36,#443719)}
+#toast{position:absolute;left:50%;bottom:220px;transform:translateX(-50%);padding:10px 14px;max-width:90%;text-align:center;font-size:13px;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
+#start{position:fixed;inset:0;background:linear-gradient(180deg,#0a1424dd,#0a1424f2);display:flex;align-items:center;justify-content:center;padding:24px;z-index:5}
+#start .card{max-width:390px;text-align:center;padding:24px 22px}
+#start h1{color:var(--gold);font-size:27px;line-height:1.1;margin:4px 0 8px}
+#start p{line-height:1.5;color:#d7e1ef;font-size:14px}
+#start button{border:0;border-radius:12px;padding:13px 22px;font-size:16px;font-weight:800;color:#172033;background:linear-gradient(90deg,#ffe08a,#ffb84f);margin-top:8px}
+#start .dragon{font-size:52px}
+#help{position:absolute;right:12px;top:115px;padding:8px 10px;font-size:11px;opacity:.8;text-align:right}
+@media(min-width:700px){#bottom{max-width:800px;margin:auto;left:0;right:0}#quest{max-width:330px}#brand strong{font-size:17px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+  <div id="top">
+    <div id="brand" class="panel"><strong>⚔ ELDORIA</strong><small>Probuzení draka · DEMO 0.1</small></div>
+    <div id="stats" class="panel">
+      <div class="statline"><b id="level">Úroveň 1</b><span id="xpText">0 / 100 XP</span></div>
+      <div class="bar"><div id="xpFill" class="fill" style="width:0%"></div></div>
+      <div class="statline"><span>❤️ Životy</span><b id="hpText">100 / 100</b></div>
+      <div class="bar"><div id="hpFill" class="fill"></div></div>
+    </div>
+  </div>
+  <div id="quest" class="panel"><b>Hlavní úkol</b><br>Poraz 3 slizouny v Zeleném údolí.<br><span id="questCount">Porazeno: 0 / 3</span></div>
+  <div id="help">🕹 Pohyb vlevo<br>⚔ Útok vpravo</div>
+  <div id="hint" class="panel"></div>
+  <div id="toast" class="panel"></div>
+  <div id="bottom">
+    <div id="joystick"><div id="stick"></div></div>
+    <div id="actions">
+      <button id="interact" class="action"><span>✦</span>INFO</button>
+      <button id="attack" class="action"><span>⚔️</span>ÚTOK</button>
+    </div>
+  </div>
+</div>
+<div id="start">
+  <div class="card panel">
+    <div class="dragon">🐉</div>
+    <h1>Eldoria</h1>
+    <div style="color:#ffd36b;font-weight:700">Probuzení draka</div>
+    <p>Vítej, dobrodruhu! Prozkoumej Zelené údolí, najdi slizouny a poraz je. Za vítězství získáš XP a zvýšíš svou úroveň.</p>
+    <p><b>Ovládání:</b> drž joystick vlevo pro pohyb, tlačítkem ⚔️ zaútočíš.</p>
+    <button id="startBtn">Vstoupit do Eldorie</button>
+    <p style="font-size:11px;opacity:.65;margin-bottom:0">3D prototyp pro mobilní prohlížeč · připojení k internetu je potřeba pro načtení 3D knihovny.</p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(()=>{
+const gameEl=document.getElementById('game');
+if(!window.THREE){document.getElementById('start').querySelector('p').textContent='Nepodařilo se načíst 3D knihovnu. Zkontroluj připojení k internetu a obnov stránku.';return;}
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x8fc6dc);
+scene.fog=new THREE.Fog(0x8fc6dc,24,65);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,150);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+gameEl.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd9f4ff,0x4d6541,2.0));
+const sun=new THREE.DirectionalLight(0xfff0cf,2.2);sun.position.set(-12,22,8);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
+const grass=mat(0x4d9854),darkGrass=mat(0x347643),stone=mat(0x737d82),bark=mat(0x68452b),leaf=mat(0x247047),leaf2=mat(0x438b48),gold=mat(0xf4bd4f),blue=mat(0x397bd1),skin=mat(0xf0bd8b),armor=mat(0x536c9b),slimeMat=mat(0x75e46b,.55),slimeDark=mat(0x318b4d),white=mat(0xffffff);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(130,130),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=true;scene.add(ground);
+const grid=new THREE.GridHelper(130,65,0x4c8b50,0x4c8b50);grid.position.y=-.1;grid.material.transparent=true;grid.material.opacity=.12;scene.add(grid);
+// path
+const pathMat=mat(0xb7a17a);const path=new THREE.Mesh(new THREE.PlaneGeometry(5,52),pathMat);path.rotation.x=-Math.PI/2;path.position.set(0,-.08,-12);scene.add(path);
+// mountains around the valley
+for(let i=0;i<24;i++){let a=i/24*Math.PI*2;let r=36+Math.random()*8;let h=7+Math.random()*10;let m=new THREE.Mesh(new THREE.ConeGeometry(4+Math.random()*4,h,5),mat(i%2?0x748b91:0x879ca0));m.position.set(Math.cos(a)*r,h/2-1,Math.sin(a)*r);m.rotation.y=Math.random()*3;m.castShadow=true;scene.add(m);}
+// trees and rocks
+for(let i=0;i<65;i++){let x=(Math.random()-.5)*54,z=(Math.random()-.5)*58;if(Math.abs(x)<4&&z<8&&z>-35)continue;
+ if(Math.random()<.73){let h=1.5+Math.random()*1.4;let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.28,h,6),bark);trunk.position.set(x,h/2,z);trunk.castShadow=true;scene.add(trunk);
+ let crown=new THREE.Mesh(new THREE.ConeGeometry(.9+Math.random()*.6,2.4+Math.random(),7),Math.random()<.5?leaf:leaf2);crown.position.set(x,h+1,z);crown.castShadow=true;scene.add(crown);
+ }else{let rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.4+Math.random()*.6,0),stone);rock.position.set(x,.25,z);rock.scale.y=.7;rock.rotation.set(Math.random(),Math.random(),Math.random());rock.castShadow=true;scene.add(rock);}
+}
+// distant tower
+const tower=new THREE.Group();const tm=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.4,6,8),mat(0x9da9b0));tm.position.y=3;tower.add(tm);const roof=new THREE.Mesh(new THREE.ConeGeometry(1.5,2.2,8),mat(0x6b394b));roof.position.y=7;tower.add(roof);tower.position.set(10,0,-28);scene.add(tower);
+const player=new THREE.Group();scene.add(player);
+const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.7,4,8),armor);body.position.y=1.05;body.castShadow=true;player.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.31,12,10),skin);head.position.y=1.78;head.castShadow=true;player.add(head);
+const hair=new THREE.Mesh(new THREE.SphereGeometry(.32,10,7,0,Math.PI*2,0,Math.PI*.58),mat(0x503525));hair.position.y=1.91;player.add(hair);
+const belt=new THREE.Mesh(new THREE.BoxGeometry(.8,.12,.48),gold);belt.position.y=.76;player.add(belt);
+const sword=new THREE.Group();const blade=new THREE.Mesh(new THREE.BoxGeometry(.12,.85,.12),mat(0xdce9f5,.3));blade.position.y=.43;sword.add(blade);const hilt=new THREE.Mesh(new THREE.BoxGeometry(.34,.1,.16),gold);hilt.position.y=.04;sword.add(hilt);sword.position.set(.47,1.03,.05);sword.rotation.z=-.38;player.add(sword);
+const shadowDisc=new THREE.Mesh(new THREE.CircleGeometry(.62,20),new THREE.MeshBasicMaterial({color:0x152b1b,transparent:true,opacity:.25}));shadowDisc.rotation.x=-Math.PI/2;shadowDisc.position.y=-.05;player.add(shadowDisc);
+player.position.set(0,0,5);
+const enemies=[];
+function makeSlime(x,z){const g=new THREE.Group();const blob=new THREE.Mesh(new THREE.SphereGeometry(.58,14,10),slimeMat);blob.scale.set(1.15,.78,1);blob.position.y=.48;blob.castShadow=true;g.add(blob);const eyeMat=mat(0x183d25);for(const ex of [-.19,.19]){let e=new THREE.Mesh(new THREE.SphereGeometry(.065,8,8),eyeMat);e.position.set(ex,.57,.49);g.add(e);}const shine=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),white);shine.position.set(-.2,.69,.43);shine.material=white;g.add(shine);g.position.set(x,0,z);scene.add(g);enemies.push({g,hp:2,maxHp:2,alive:true,baseX:x,baseZ:z,phase:Math.random()*6});}
+[[-3,-4],[3,-8],[-5,-14],[5,-19],[0,-24],[7,-4]].forEach(p=>makeSlime(...p));
+let level=1,xp=0,hp=100,defeated=0,attackCooldown=0,gameStarted=false,toastTimer=0,attackAnim=0;
+const keys={};let joy={active:false,id:null,x:0,y:0,dx:0,dy:0};
+const joyEl=document.getElementById('joystick'),stick=document.getElementById('stick');
+function setJoy(e){const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;let len=Math.hypot(dx,dy),max=39;if(len>max){dx=dx/len*max;dy=dy/len*max;}joy.dx=dx/max;joy.dy=dy/max;stick.style.transform=`translate(${dx}px,${dy}px)`;}
+joyEl.addEventListener('pointerdown',e=>{joy.active=true;joy.id=e.pointerId;joyEl.setPointerCapture(e.pointerId);setJoy(e);});
+joyEl.addEventListener('pointermove',e=>{if(joy.active&&e.pointerId===joy.id)setJoy(e);});
+function endJoy(e){if(e.pointerId===joy.id){joy.active=false;joy.dx=joy.dy=0;stick.style.transform='translate(0,0)';}}
+joyEl.addEventListener('pointerup',endJoy);joyEl.addEventListener('pointercancel',endJoy);
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();attack();}});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function say(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');toastTimer=2.5;}
+function updateHud(){document.getElementById('level').textContent='Úroveň '+level;document.getElementById('xpText').textContent=xp+' / '+(level*100)+' XP';document.getElementById('xpFill').style.width=(xp/(level*100)*100)+'%';document.getElementById('hpText').textContent=hp+' / 100';document.getElementById('hpFill').style.width=hp+'%';document.getElementById('questCount').textContent='Porazeno: '+defeated+' / 3';}
+function gainXP(n){xp+=n;while(xp>=level*100){xp-=level*100;level++;hp=Math.min(100,hp+20);say('✨ Nová úroveň! Jsi nyní na úrovni '+level+'!');}updateHud();}
+function attack(){if(!gameStarted||attackCooldown>0)return;attackCooldown=.55;attackAnim=.32;sword.rotation.z=-1.45;let found=null,best=2.55;for(const en of enemies){if(!en.alive)continue;const d=player.position.distanceTo(en.g.position);if(d<best){let dir=new THREE.Vector3(Math.sin(player.rotation.y),0,Math.cos(player.rotation.y));let toward=en.g.position.clone().sub(player.position).normalize();if(dir.dot(toward)>.05){best=d;found=en;}}}
+if(found){found.hp--;found.g.position.x+=Math.sin(player.rotation.y)*.45;found.g.position.z+=Math.cos(player.rotation.y)*.45;found.g.scale.set(1.18,.8,1.18);if(found.hp<=0){found.alive=false;scene.remove(found.g);defeated++;gainXP(35);say('Slizoun poražen! +35 XP');document.getElementById('questCount').textContent='Porazeno: '+defeated+' / 3';if(defeated>=3){say('🏆 Úkol splněn! Získal jsi 100 bonusových XP!');gainXP(100);document.getElementById('quest').innerHTML='<b>Úkol splněn!</b><br>Údolí je bezpečnější. Prototyp pokračuje…';}}else{say('Zásah! Slizounovi zbývá '+found.hp+' ❤️');}}
+else say('Jsi moc daleko. Přibliž se k nepříteli!');}
+document.getElementById('attack').addEventListener('pointerdown',e=>{e.preventDefault();attack();});
+document.getElementById('interact').addEventListener('pointerdown',e=>{e.preventDefault();say('Tip: přibliž se ke slizounovi, natoč se k němu a stiskni ÚTOK.');});
+document.getElementById('startBtn').addEventListener('click',()=>{gameStarted=true;document.getElementById('start').style.display='none';say('Tvá výprava začíná. Najdi slizouny!');});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);if(gameStarted){
+ if(attackCooldown>0)attackCooldown-=dt;if(attackAnim>0){attackAnim-=dt;if(attackAnim<=0)sword.rotation.z=-.38;}
+ let ix=joy.dx,iy=joy.dy;if(keys.w||keys.arrowup)iy-=1;if(keys.s||keys.arrowdown)iy+=1;if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;let mag=Math.hypot(ix,iy);if(mag>1){ix/=mag;iy/=mag;}
+ // joystick up means forward along -Z; camera-relative movement
+ const forward=new THREE.Vector3().subVectors(player.position,camera.position);forward.y=0;forward.normalize();const right=new THREE.Vector3(forward.z,0,-forward.x);
+ const move=new THREE.Vector3().addScaledVector(right,ix).addScaledVector(forward,iy).multiplyScalar(5.4*dt);
+ player.position.add(move);player.position.x=THREE.MathUtils.clamp(player.position.x,-24,24);player.position.z=THREE.MathUtils.clamp(player.position.z,-34,20);
+ if(Math.hypot(move.x,move.z)>.001){player.rotation.y=Math.atan2(move.x,move.z);body.position.y=1.05+Math.sin(performance.now()*.012)*.035;}
+ for(const en of enemies){if(!en.alive)continue;en.phase+=dt;en.g.position.y=Math.abs(Math.sin(en.phase*2))*.09;en.g.scale.x=1+Math.sin(en.phase*2)*.025;const d=en.g.position.distanceTo(player.position);if(d<1.25){/* harmless contact in this first prototype */}}
+ const target=new THREE.Vector3(player.position.x,2.7,player.position.z+6.8);camera.position.lerp(target,.09);camera.lookAt(player.position.x,1.05,player.position.z-1.2);
+ if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)document.getElementById('toast').classList.remove('show');}
+ }else{camera.position.set(0,7,15);camera.lookAt(0,0,0);}
+ renderer.render(scene,camera);}
+updateHud();animate();
+})();
+</script>
+</body>
+</html>
